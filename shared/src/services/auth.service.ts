@@ -294,7 +294,10 @@ export class AuthService extends Service {
 		}
 	}
 
-	async getUserById(user_id: string): Promise<{
+	async getUserById(
+		user_id: string,
+		activeOnly = true,
+	): Promise<{
 		error: ApiError | null;
 		user: {
 			user_id: string;
@@ -305,7 +308,7 @@ export class AuthService extends Service {
 		try {
 			let error: null | ApiError = null;
 
-			const { data: userDetails, error: userDetailsErr } = await this.supabase
+			let query = this.supabase
 				.from(this.USERS_TABLE)
 				.select(
 					`
@@ -314,10 +317,10 @@ export class AuthService extends Service {
 					created_at
 				`,
 				)
-				.eq("user_id", user_id)
-				.eq("status", true)
-				.limit(1)
-				.maybeSingle();
+				.eq("user_id", user_id);
+			if (activeOnly) query = query.eq("status", true);
+
+			const { data: userDetails, error: userDetailsErr } = await query.limit(1).maybeSingle();
 
 			if (userDetailsErr || userDetails == null) {
 				error = new ApiError(userDetailsErr?.message || "User not found", 401, []);
@@ -516,12 +519,14 @@ export class AuthService extends Service {
 
 		if (profileError) {
 			console.error("Profile insert failed:", profileError);
-			this.deleteAuthUser(data.user_id);
+			await this.deleteAuthUser(data.user_id);
 			return {
 				success: false,
 				error: "Account creation failed.",
 			};
 		}
+
+		return { success: true, error: null };
 	}
 
 	async deleteAuthUser(user_id: string) {
@@ -561,12 +566,20 @@ export class AuthService extends Service {
 				};
 			}
 
-			await this.insertConsumerUser({
+			const profileResp = await this.insertConsumerUser({
 				user_id: authData.user.id,
 				firstName: data.firstName,
 				lastName: data.lastName,
 				phone: data.phone ?? null,
 			});
+
+			if (!profileResp?.success) {
+				await this.deleteAuthUser(authData.user.id);
+				return {
+					success: false,
+					error: profileResp?.error || "Failed to create account",
+				};
+			}
 
 			// Success
 			return {

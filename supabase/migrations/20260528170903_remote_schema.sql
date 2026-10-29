@@ -188,19 +188,20 @@ revoke truncate on table "public"."tour_time_slots" from "service_role";
 
 revoke update on table "public"."tour_time_slots" from "service_role";
 
+-- Foreign keys must be dropped before the unique keys they depend on.
+alter table "public"."tour_availability_slots" drop constraint "tour_availability_slots_availability_id_fkey";
+
+alter table "public"."tour_availability_slots" drop constraint "tour_availability_slots_time_slot_id_fkey";
+
+alter table "public"."tour_availabilities" drop constraint "tour_availabilities_tour_option_id_fkey";
+
 alter table "public"."cache_invalidation_events" drop constraint "cache_invalidation_events_id_key";
 
 alter table "public"."tour_availabilities" drop constraint "tour_availabilities_id_key";
 
-alter table "public"."tour_availabilities" drop constraint "tour_availabilities_tour_option_id_fkey";
-
 alter table "public"."tour_availability_slots" drop constraint "tour_availability_slots_avail_time_unique";
 
-alter table "public"."tour_availability_slots" drop constraint "tour_availability_slots_availability_id_fkey";
-
 alter table "public"."tour_availability_slots" drop constraint "tour_availability_slots_id_key";
-
-alter table "public"."tour_availability_slots" drop constraint "tour_availability_slots_time_slot_id_fkey";
 
 alter table "public"."tour_time_slots" drop constraint "tour_time_slots_id_key";
 
@@ -460,6 +461,9 @@ create type "public"."payment_status_enum" as enum ('PENDING', 'PARTIAL', 'PAID'
 
 alter table "public"."tour_reviews" enable row level security;
 
+-- Old default ('UNPAID') can't be cast to the new enum, so drop it first.
+alter table "public"."bookings" alter column "payment_status" drop default;
+
 alter table "public"."bookings" alter column payment_status type "public"."payment_status_enum" using payment_status::text::"public"."payment_status_enum";
 
 drop type "public"."payment_status_enum__old_version_to_be_dropped";
@@ -469,8 +473,6 @@ alter table "public"."app_users" add column "country" text;
 alter table "public"."bookings" add column "added_by" uuid;
 
 alter table "public"."bookings" add column "checkout_session_id" text;
-
-alter table "public"."bookings" alter column "payment_status" drop default;
 
 alter sequence "public"."cart_items_id_seq" owned by "public"."cart_items"."id";
 

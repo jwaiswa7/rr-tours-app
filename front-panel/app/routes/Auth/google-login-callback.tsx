@@ -38,16 +38,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 	// let sessionData = await authSvc.getSession();
 	console.log(sessionData == null ? "NO SESSION FOUND!!!" : "Session found");
 
-	if (sessionData && intent === "signup") {
+	// Google creates the auth user on first sign-in from either page, so always ensure a profile exists.
+	if (sessionData) {
 		const authUser = await authSvc.getAuthSchemaUser(sessionData.user.id);
 		// console.log("authUser: ", authUser);
 
 		if (authUser.data != null) {
-			const user_profile = await authSvc.getUserById(sessionData.user.id);
-			if (user_profile.user == null || user_profile.error != null) {
-				const fullName = sessionData.user.user_metadata.full_name?.split(" ") ?? "";
-				const firstName = fullName[0];
-				const lastName = fullName[1];
+			const user_profile = await authSvc.getUserById(sessionData.user.id, false);
+			if (user_profile.user == null) {
+				const fullName = sessionData.user.user_metadata.full_name?.split(" ") ?? [];
+				const firstName = fullName[0] ?? "";
+				const lastName = fullName.slice(1).join(" ");
 
 				const resp = await authSvc.insertConsumerUser({
 					user_id: sessionData.user.id,
@@ -58,14 +59,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 				if (!resp?.success || resp.error) {
 					await authSvc.deleteAuthUser(sessionData.user.id);
-				} else {
-					return redirect("/" + decodeURIComponent("?error=Could not create user"), {
+					return redirect("/login?error=" + encodeURIComponent("Could not create user"), {
 						headers: exchangeHeaders,
 					});
 				}
 
 				if (authUser.data.user?.email)
-					await emailService.sendWelcomeEmail(fullName, authUser.data.user?.email);
+					await emailService.sendWelcomeEmail(firstName, authUser.data.user.email);
 			}
 		}
 	}

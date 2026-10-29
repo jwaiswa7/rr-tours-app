@@ -108,7 +108,11 @@ export default function Home({ loaderData }: Route.ComponentProps) {
 				metaKeywords="WanderNest, Dubai Tours, Abu Dhabi Tours, UAE Tours, Burj Khalifa Tour, Dubai theme park tour, Dubai Mall, Al Ain City, Mesum of Future Tour, Dubai safari parks, National Aquarium Tour, Dubai Desert Safari Tour, Cruise Tours Dubai"
 				canonicalUrl={`${process.env.VITE_MAIN_APP_URL}`}
 				ogUrl={`${process.env.VITE_MAIN_APP_URL}`}
-				ogImage={SUPABASE_IMAGE_BUCKET_PATH + "/" + loaderData.heroSectionsResp![0].image}
+				ogImage={
+					loaderData.heroSectionsResp?.[0]?.image
+						? SUPABASE_IMAGE_BUCKET_PATH + "/" + loaderData.heroSectionsResp[0].image
+						: undefined
+				}
 			/>
 			<section className="pb-20 sm:space-y-16 space-y-8">
 				<HeroSection hero_sections={loaderData.heroSectionsResp ?? []} />
